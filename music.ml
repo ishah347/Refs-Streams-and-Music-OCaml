@@ -9,6 +9,7 @@ module NLS = NativeLazyStreams ;;
 
 exception InvalidHex ;;
 exception InvalidPitch ;;
+exception InvalidList ;;
 
 (*----------------------------------------------------------------------
                     Music data types and conversions
@@ -185,12 +186,14 @@ let rec list_to_stream (lst : obj list) : event NLS.stream =
     | [] -> list_to_stream lst
     | hd :: tl -> 
         (match hd with 
-        | Note (p, f, i) -> 
-            lazy (Cons(Tone(0., p, i), 
-              lazy (Cons(Stop(f, p), (list_to_stream_rec tl)))))
-        | Rest (f) -> 
-            lazy (Cons(shift f (head (list_to_stream_rec tl)), 
-              tail (list_to_stream_rec tl))))  
+         | Note (p, f, i) -> 
+             lazy (Cons(Tone(0., p, i), 
+               lazy (Cons(Stop(f, p), (list_to_stream_rec tl)))))
+         | Rest (f) -> 
+             (match tl with
+              | Rest (_) :: _ -> raise InvalidList
+              | _ -> lazy (Cons(shift f (head (list_to_stream_rec tl)), 
+                       tail (list_to_stream_rec tl)))))  
   in list_to_stream_rec lst ;;      
 
 (*......................................................................
