@@ -12,7 +12,7 @@ type 'a mlist = Nil | Cons of 'a * 'a mlist ref
 Problem 1: Write a function has_cycle that returns whether a mutable
 list has a cycle. You may want a recursive helper function. Don't
 worry about space usage.
-......................................................................*)                                      
+......................................................................*)
 let has_cycle (lst : 'a mlist) : bool =
   let rec check_for_cycle acc mlst =
   	match mlst with
