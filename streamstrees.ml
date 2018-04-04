@@ -220,7 +220,6 @@ with 0. For example:
 let tree_nats : int tree = 
   let rec tree n = lazy (Node(n, [(tree (2 * n + 1)); (tree (2 * n + 2))])) in
   tree 0 ;;
-  (*lazy (Node(0, [(tmap (fun x -> 2 * x + 1) tree_nats); (tmap (fun x -> 2 * x + 2) tree_nats)])) ;;*)
                                                  
 (*======================================================================
 Time estimate

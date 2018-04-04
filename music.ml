@@ -185,8 +185,12 @@ let rec list_to_stream (lst : obj list) : event NLS.stream =
     | [] -> list_to_stream lst
     | hd :: tl -> 
         (match hd with 
-        | Note (p, f, i) -> lazy (Cons(Tone(0., p, i), lazy (Cons(Stop(f, p), (list_to_stream_rec tl)))))
-        | Rest (f) -> lazy (Cons(shift f (head (list_to_stream_rec tl)), tail (list_to_stream_rec tl))))  
+        | Note (p, f, i) -> 
+            lazy (Cons(Tone(0., p, i), 
+              lazy (Cons(Stop(f, p), (list_to_stream_rec tl)))))
+        | Rest (f) -> 
+            lazy (Cons(shift f (head (list_to_stream_rec tl)), 
+              tail (list_to_stream_rec tl))))  
   in list_to_stream_rec lst ;;      
 
 (*......................................................................
@@ -200,9 +204,12 @@ let rec pair (a : event NLS.stream) (b : event NLS.stream)
   match (head a), (head b) with
   | Tone (f1, _, _), Tone (f2, _, _) | Tone (f1, _, _), Stop (f2, _) 
   | Stop (f1, _), Tone (f2, _, _) | Stop (f1, _), Stop (f2, _) -> 
-    if f1 < f2 then lazy (Cons ((head a), (pair (lazy (Cons(shift (-.f1) (head b), tail b))) (tail a))))
+    if f1 < f2 then 
+      lazy (Cons ((head a), 
+        (pair (lazy (Cons(shift (-.f1) (head b), tail b))) (tail a))))
     else if f1 > f2 then pair b a
-    else lazy (Cons ((head a), lazy (Cons ((shift (-.f1) (head b)), pair (tail a) (tail b))))) ;;
+    else lazy (Cons ((head a), 
+      lazy (Cons ((shift (-.f1) (head b)), pair (tail a) (tail b))))) ;;
 
 (*......................................................................
 Write a function transpose that takes an event stream and moves each pitch
@@ -318,7 +325,11 @@ let fast = [(D, 3); (Gb, 3); (A, 3); (G, 3);
 let melody = list_to_stream ((List.map quarter slow)
                              @ (List.map eighth fast));;
 
-let canon = pair bass (pair (shift_start 2.0 melody) (pair (shift_start 4.0 melody) (shift_start 6.0 melody))) ;;
+let canon = 
+  let shift_by_2 = shift_start 2.0 melody in
+  let shift_by_4 = shift_start 2.0 shift_by_2 in
+  let shift_by_6 = shift_start 2.0 shift_by_4 in
+  pair bass (pair shift_by_2 (pair shift_by_4 shift_by_6)) ;;
 
 output_midi "canon.mid" (stream_to_hex 176 canon);;
 

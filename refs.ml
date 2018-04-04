@@ -13,15 +13,6 @@ Problem 1: Write a function has_cycle that returns whether a mutable
 list has a cycle. You may want a recursive helper function. Don't
 worry about space usage.
 ......................................................................*)                                      
-(* Create function that will be used to reduce repeated code *)
-
-(*let rec is_cycle (acc : 'a mlist list) (mlst : 'a mlist) (no : 'b) (yes : 'b) : 'b =
-  match mlst with
-  | Nil -> no
-  | Cons (_, tl) ->
-  	  if List.mem !tl acc then yes  
-  	  else is_cycle (mlst :: acc) !tl no yes ;;*)
-
 let has_cycle (lst : 'a mlist) : bool =
   let rec check_for_cycle acc mlst =
   	match mlst with
