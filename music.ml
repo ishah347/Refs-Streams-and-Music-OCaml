@@ -179,9 +179,15 @@ around as well. Both need to be recursive, since you will call both the
 inner and outer functions at some point. See below for some examples.
 ......................................................................*)
 let rec list_to_stream (lst : obj list) : event NLS.stream =
+  let open NLS in
   let rec list_to_stream_rec nlst =
-    failwith "list_to_stream not implemented"
-  in list_to_stream_rec lst ;;
+    match nlst with
+    | [] -> list_to_stream lst
+    | hd :: tl -> 
+        (match hd with 
+        | Note (p, f, i) -> lazy (Cons(Tone(0., p, i), lazy (Cons(Stop(f, p), (list_to_stream_rec tl)))))
+        | Rest (f) -> lazy (Cons(shift f (head (list_to_stream_rec tl)), tail (list_to_stream_rec tl))))  
+  in list_to_stream_rec lst ;;      
 
 (*......................................................................
 Write a function pair that merges two event streams. Events that happen
@@ -190,7 +196,13 @@ for some examples.
 ......................................................................*)
 let rec pair (a : event NLS.stream) (b : event NLS.stream)
            : event NLS.stream =
-  failwith "pair not implemented"
+  let open NLS in
+  match (head a), (head b) with
+  | Tone (f1, _, _), Tone (f2, _, _) | Tone (f1, _, _), Stop (f2, _) 
+  | Stop (f1, _), Tone (f2, _, _) | Stop (f1, _), Stop (f2, _) -> 
+    if f1 < f2 then lazy (Cons ((head a), (pair (lazy (Cons(shift (-.f1) (head b), tail b))) (tail a))))
+    else if f1 > f2 then pair b a
+    else lazy (Cons ((head a), lazy (Cons ((shift (-.f1) (head b)), pair (tail a) (tail b))))) ;;
 
 (*......................................................................
 Write a function transpose that takes an event stream and moves each pitch
@@ -207,14 +219,14 @@ let transpose_pitch ((p, oct) : pitch) (half_steps : int) : pitch =
 
 let transpose (str : event NLS.stream) (half_steps : int)
             : event NLS.stream =
-    failwith "transpose not implemented"
+  NLS.smap (fun e -> 
+          match e with
+          | Tone (f, p, i) -> Tone (f, (transpose_pitch p half_steps), i)
+          | Stop (f, p) -> Stop (f, transpose_pitch p half_steps)) str ;;
 
 (*----------------------------------------------------------------------
                          Testing music streams
  *)
-
-(* <---- (* ... UNCOMMENT THIS SECTION ONCE YOU'VE IMPLEMENTED 
-                 THE FUNCTIONS ABOVE. ... *)
 
 (*......................................................................
 For testing purposes, let's start with a trivial example, useful for
@@ -240,7 +252,7 @@ let melody2 = shift_start 0.25
 
 (* The result is a stream that begins as
 
-s    # NLS.first 5 melody2 ;;
+    # NLS.first 5 melody2 ;;
     - : event list =
     [Tone (0.25, (G, 3), 60); Stop (0.25, (G, 3)); Tone (0.25, (B, 3), 60);
      Stop (0.5, (B, 3)); Tone (0., (G, 3), 60)]
@@ -262,14 +274,11 @@ You can write this out as a midi file and listen to it. *)
                               
 let _ = output_midi "temp.mid" (stream_to_hex 16 harmony) ;;
    
- *)   (* <----- END OF SECTION TO UNCOMMENT. *)
-   
 (*......................................................................
 The next example combines some scales. Uncomment these lines when you're
 done implementing the functions above. You can listen
 to it by opening the file "scale.mid". *)
 
-(*
 let scale1 = list_to_stream (List.map quarter
                                       [(C,3); (D,3); (E,3); (F,3); 
                                        (G,3); (A,3); (B,3); (C,4)]) ;;
@@ -279,7 +288,6 @@ let scale2 = transpose scale1 7 ;;
 let scales = pair scale1 scale2 ;; 
 
 let _ = output_midi "scale.mid" (stream_to_hex 32 scales) ;; 
- *)
 
 (*......................................................................
 Then with just three lists provided after this comment and and the
@@ -293,7 +301,6 @@ streams bass and melody. Uncomment the definitions above and the lines
 below when you're done. Run the program and open "canon.mid" to hear
 the beautiful music. *)
    
-(*
 let bass = list_to_stream
               (List.map quarter [(D, 3); (A, 2); (B, 2); (Gb, 2); 
                                  (G, 2); (D, 2); (G, 2); (A, 2)]) ;; 
@@ -310,10 +317,10 @@ let fast = [(D, 3); (Gb, 3); (A, 3); (G, 3);
 
 let melody = list_to_stream ((List.map quarter slow)
                              @ (List.map eighth fast));;
- *)
-let canon = lazy (failwith "canon not implemented")
 
-(* output_midi "canon.mid" (stream_to_hex 176 canon);; *)
+let canon = pair bass (pair (shift_start 2.0 melody) (pair (shift_start 4.0 melody) (shift_start 6.0 melody))) ;;
+
+output_midi "canon.mid" (stream_to_hex 176 canon);;
 
 
 (*......................................................................
@@ -355,4 +362,4 @@ on average, not in total).  We care about your responses and will use
 them to help guide us in creating future assignments.
 ......................................................................*)
 
-let minutes_spent_on_part () : int = failwith "not provided" ;;
+let minutes_spent_on_part () : int = 120 ;;

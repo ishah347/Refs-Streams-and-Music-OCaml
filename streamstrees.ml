@@ -45,7 +45,8 @@ the input stream. For example:
 ......................................................................*)
   
 let average (s : float stream) : float stream =
-  failwith "average not implemented" ;;
+  smap2 (fun x y -> (x +. y) /. 2.) s (tail s) ;;
+  
 
 (* Now instead of using the stream of approximations in pi_sums, you
 can instead use the stream of averaged pi_sums, which converges much
@@ -63,7 +64,11 @@ use it to generate approximations of pi.
 ......................................................................*)
    
 let aitken (s: float stream) : float stream =
-  failwith "aitken not implemented" ;;
+  let add = smap2 ( +. ) in
+  let subtract = smap2 ( -. ) in 
+  let dividend = smap (fun x -> x *. x) (subtract s (tail s)) in
+  let divisor = add (subtract s (smap (( *. ) 2.) (tail s))) (tail (tail s)) in
+  subtract s (smap2 ( /. ) dividend divisor) ;;
 
 (*......................................................................
 Problem 7: Testing the acceleration
@@ -74,13 +79,13 @@ get within different epsilons of pi.
     ---------------------------------------------------------
     epsilon  |  pi_sums  |  averaged method  |  aitken method 
     ---------------------------------------------------------
-    0.1      |           |                   |
+    0.1      |     19    |          2         |     0
     ---------------------------------------------------------
-    0.01     |           |                   |
+    0.01     |     199   |           9        |     2
     ---------------------------------------------------------
-    0.001    |           |                   |
+    0.001    |     1999  |          30         |     6
     ---------------------------------------------------------
-    0.0001   |           |                   |
+    0.0001   |     19999 |          99         |     15
     ---------------------------------------------------------
 ......................................................................*)
 
@@ -112,13 +117,16 @@ node t -- Returns the element of type 'a stored at the root node of
 tree t of type 'a tree.
 ......................................................................*)
 let node (t : 'a tree) : 'a =
-  failwith "node not implemented" ;;
+  let Node (hd, _) = Lazy.force t in hd ;;
 
 (*......................................................................
 children t -- Returns the list of children of the root node of tree t.
 ......................................................................*)
 let children (t : 'a tree) : 'a tree list =
-  failwith "children not implemented" ;;
+  let Node (_, tl) = Lazy.force t in 
+    match tl with
+    | [] -> raise Finite_tree
+    | _ -> tl ;;
 
 (*......................................................................
 print_depth n indent t -- Prints a representation of the first n
@@ -126,14 +134,21 @@ levels of the tree t indented indent spaces. You can see some examples
 of the intended output of print_depth below.
 ......................................................................*)
 let rec print_depth (n : int) (indent : int) (t : int tree) : unit =
-  failwith "print_depth not implemented" ;;
+  let rec indenter (i : int) : unit =
+    if i > 0 then 
+      (Printf.printf " ";
+       indenter (i - 1)) in 
+  if n >= 0 then 
+    (indenter indent;
+     Printf.printf "%d...\n" (node t);
+     List.iter (print_depth (n - 1) (indent + 1)) (children t)) ;;
 
 (*......................................................................
 tmap f t -- Returns a tree obtained by mapping the function f over
 each node in t.
 ......................................................................*)
 let rec tmap (f : 'a -> 'b) (t : 'a tree) : 'b tree =
-  failwith "tmap not implemented" ;;
+  lazy (Node (f (node t), List.map (tmap f) (children t))) ;;
 
 (*......................................................................
 tmap2 f t1 t2 -- Returns the tree obtained by applying the function f
@@ -143,7 +158,8 @@ to corresponding nodes in t1 and t2, which must have the same
 let rec tmap2 (f : 'a -> 'b -> 'c)
               (t1 : 'a tree) (t2 : 'b tree)
             : 'c tree =
-  failwith "tmap2 not implemented" ;;
+  lazy (Node (f (node t1) (node t2), 
+              List.map2 (tmap2 f) (children t1) (children t2))) ;;
 
 (*......................................................................
 bfenumerate tslist -- Returns a LazyStreams.stream of the nodes in the
@@ -153,7 +169,8 @@ forth. There is an example of bfenumerate being applied below.
 ......................................................................
  *)
 let rec bfenumerate (tslist : 'a tree list) : 'a stream =
-  failwith "bfenumerate not implemented" ;;
+  let x, y = (List.hd tslist), (List.tl tslist) in 
+  lazy (Cons((node x), bfenumerate (y @ (children x)))) ;;
 
 (* Now use your implementation to generate some interesting infinite
 trees.  Hint: Drawing a tree considering how the values change along
@@ -163,7 +180,7 @@ each branch will yield helpful intuition for the next problems. *)
 onest -- An infinite binary tree all of whose nodes hold the integer 1.
 ......................................................................*)
 let rec onest : int tree =
-  lazy (failwith "onest not implemented") ;;
+  lazy (Node(1, [onest; onest])) ;;
 
 (*......................................................................
 levels n -- Returns an infinite binary tree where the value of each
@@ -181,7 +198,7 @@ argument n. For example:
 - : unit = ()
 ......................................................................*)
 let rec levels (n : int) : int tree =
-  failwith "levels not implemented" ;;
+  lazy (Node(n, [levels (n + 1); levels (n + 1)])) ;;
 
 (*......................................................................
 Define an infinite binary tree tree_nats where the value of each node in
@@ -200,8 +217,10 @@ with 0. For example:
 # first 10 (bfenumerate [tree_nats]) ;;
 - : int list = [0; 1; 2; 3; 4; 5; 6; 7; 8; 9]
 ......................................................................*)
-let rec tree_nats : int tree =
-  lazy (failwith "tree_nats not implemented") ;;
+let tree_nats : int tree = 
+  let rec tree n = lazy (Node(n, [(tree (2 * n + 1)); (tree (2 * n + 2))])) in
+  tree 0 ;;
+  (*lazy (Node(0, [(tmap (fun x -> 2 * x + 1) tree_nats); (tmap (fun x -> 2 * x + 2) tree_nats)])) ;;*)
                                                  
 (*======================================================================
 Time estimate
@@ -212,4 +231,4 @@ on average, not in total).  We care about your responses and will use
 them to help guide us in creating future assignments.
 ......................................................................*)
 
-let minutes_spent_on_part () : int = failwith "not provided" ;;
+let minutes_spent_on_part () : int = 120 ;;
